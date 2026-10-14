@@ -15,6 +15,8 @@ export interface PlotMarker {
   value: number;
   color?: string;
   label?: string;
+  width?: number;
+  lineStyle?: "solid" | "dashed";
 }
 
 export function validatePlotData(data: PlotData): void {

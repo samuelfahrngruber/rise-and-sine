@@ -45,7 +45,12 @@ function plotOverlay(): HTMLElement {
   return host.querySelector<HTMLElement>(".u-over")!;
 }
 
-function hasMarkerColor(position: number, angle: number, color: [number, number, number]): boolean {
+function hasMarkerColor(
+  position: number,
+  angle: number,
+  color: [number, number, number],
+  verticalRadius = 5,
+): boolean {
   const canvas = host.querySelector("canvas")!;
   const canvasBounds = canvas.getBoundingClientRect();
   const bounds = plotOverlay().getBoundingClientRect();
@@ -54,7 +59,9 @@ function hasMarkerColor(position: number, angle: number, color: [number, number,
   const y = Math.round(
     (bounds.top - canvasBounds.top + ((90 - angle) / 180) * bounds.height) * ratio,
   );
-  const pixels = canvas.getContext("2d")!.getImageData(x - 5, y - 5, 11, 11).data;
+  const pixels = canvas
+    .getContext("2d")!
+    .getImageData(x - 5, y - verticalRadius, 11, 2 * verticalRadius + 1).data;
   for (let index = 0; index < pixels.length; index += 4) {
     if (
       color.every((value, channel) => Math.abs(pixels[index + channel]! - value) < 3) &&
@@ -71,19 +78,102 @@ async function waitForDraw(): Promise<void> {
 }
 
 describe("solar UI", () => {
+  it("syncs an editable year position with date/time, chart selection, and playback", async () => {
+    const yearInput = page.getByRole("spinbutton", { name: "Year position (t)" });
+    await yearInput.fill("0.25");
+    await waitForDraw();
+    expect((yearInput.element() as HTMLInputElement).valueAsNumber).toBeCloseTo(0.25, 6);
+    expect((yearInput.element() as HTMLInputElement).value).toBe("0.25000000");
+    expect(input('input[type="datetime-local"]').value).toContain("2026-04-02");
+    expect(hasMarkerColor(0.25, 80, [31, 119, 180])).toBe(true);
+    await page.getByLabelText("Local time (t, Europe/Vienna)").fill("2026-01-01T00:00");
+    await waitForDraw();
+    expect((yearInput.element() as HTMLInputElement).valueAsNumber).toBe(0);
+    const overlay = plotOverlay();
+    const { width, height } = overlay.getBoundingClientRect();
+    await page.elementLocator(overlay).click({ position: { x: width / 2, y: height / 2 } });
+    await waitForDraw();
+    expect((yearInput.element() as HTMLInputElement).valueAsNumber).toBeCloseTo(0.5, 2);
+    setRange("Playback speed (v)", 100);
+    await page.getByRole("switch", { name: "Live play" }).click();
+    const before = (yearInput.element() as HTMLInputElement).valueAsNumber;
+    await expect
+      .poll(() => (yearInput.element() as HTMLInputElement).valueAsNumber)
+      .toBeGreaterThan(before);
+    await page.getByRole("switch", { name: "Live play" }).click();
+  });
+
+  it("places the formula before the chart and labels controls with its variables", () => {
+    const formula = host.querySelector("math")!;
+    const chart = host.querySelector("canvas")!;
+    expect(formula.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(page.getByRole("spinbutton", { name: "Degrees north (φ)" }).element()).toBeVisible();
+    expect(page.getByRole("slider", { name: "Latitude (φ)" }).element()).toBeVisible();
+    expect(page.getByLabelText("Local time (t, Europe/Vienna)").element()).toBeVisible();
+    expect(page.getByRole("slider", { name: "Playback speed (v)" }).element()).toBeVisible();
+  });
+
+  it("zooms to today, the next two hours, and back to the full year", async () => {
+    await page.getByLabelText("Local time (t, Europe/Vienna)").fill("2024-12-21T23:00");
+    await page.getByRole("button", { name: "Zoom to today", exact: true }).click();
+    await waitForDraw();
+    const overlay = plotOverlay();
+    const clickMiddle = async () => {
+      const { width, height } = overlay.getBoundingClientRect();
+      await page.elementLocator(overlay).click({ position: { x: width / 2, y: height / 2 } });
+      await waitForDraw();
+    };
+    await clickMiddle();
+    const midday = new Date(input('input[type="datetime-local"]').value).getTime();
+    expect(Math.abs(midday - new Date("2026-06-21T12:00:00+02:00").getTime())).toBeLessThan(
+      2 * 60_000,
+    );
+
+    await page.getByRole("button", { name: "Zoom to next 2 hours", exact: true }).click();
+    await waitForDraw();
+    await clickMiddle();
+    const later = new Date(input('input[type="datetime-local"]').value).getTime();
+    expect(Math.abs(later - midday - 60 * 60_000)).toBeLessThan(15_000);
+
+    const selected = input('input[type="datetime-local"]').value;
+    await page.getByRole("button", { name: "Reset zoom", exact: true }).click();
+    await waitForDraw();
+    expect(input('input[type="datetime-local"]').value).toBe(selected);
+    await clickMiddle();
+    expect(Number(elevationText().split("Year position: ")[1])).toBeCloseTo(0.5, 2);
+  });
+
+  it("keeps a two-hour zoom across New Year when selecting its next-year portion", async () => {
+    await page.getByLabelText("Local time (t, Europe/Vienna)").fill("2026-12-31T23:00");
+    await page.getByRole("button", { name: "Zoom to next 2 hours", exact: true }).click();
+    await waitForDraw();
+    const overlay = plotOverlay();
+    const { width, height } = overlay.getBoundingClientRect();
+    await page.elementLocator(overlay).click({ position: { x: width * 0.75, y: height / 2 } });
+    await waitForDraw();
+    const selected = new Date(input('input[type="datetime-local"]').value).getTime();
+    expect(Math.abs(selected - new Date("2027-01-01T00:30:00+01:00").getTime())).toBeLessThan(
+      15_000,
+    );
+    await page.elementLocator(overlay).click({ position: { x: width / 2, y: height / 2 } });
+    await waitForDraw();
+    const middle = new Date(input('input[type="datetime-local"]').value).getTime();
+    expect(Math.abs(middle - new Date("2027-01-01T00:00:00+01:00").getTime())).toBeLessThan(15_000);
+  });
+
   it("syncs latitude inputs and updates the displayed angle and plot", async () => {
     const before = plotPixels();
     const angle = elevationText();
     expect(input('input[type="number"]').valueAsNumber).toBe(48.2082);
-    expect(input('input[aria-label="Latitude"]').valueAsNumber).toBe(48.2082);
+    expect(input('input[aria-label="Latitude (φ)"]').valueAsNumber).toBe(48.2082);
 
-    await page.getByRole("spinbutton", { name: "Degrees north" }).fill("0");
+    await page.getByRole("spinbutton", { name: "Degrees north (φ)" }).fill("0");
     await waitForDraw();
-    expect(input('input[aria-label="Latitude"]').valueAsNumber).toBe(0);
+    expect(input('input[aria-label="Latitude (φ)"]').valueAsNumber).toBe(0);
     expect(elevationText()).not.toBe(angle);
     expect(plotPixels()).not.toBe(before);
 
-    setRange("Latitude", -33.5);
+    setRange("Latitude (φ)", -33.5);
     await waitForDraw();
     expect(input('input[type="number"]').valueAsNumber).toBe(-33.5);
     expect(plotPixels()).not.toBe(before);
@@ -91,7 +181,7 @@ describe("solar UI", () => {
 
   it("syncs date/time selection with the year, readout, and marker", async () => {
     const before = plotPixels();
-    const dateTime = page.getByLabelText("Local time (Europe/Vienna)");
+    const dateTime = page.getByLabelText("Local time (t, Europe/Vienna)");
     await dateTime.fill("2024-12-21T23:00");
     await waitForDraw();
     await expect.element(page.getByText("Sun elevation in 2024")).toBeVisible();
@@ -115,6 +205,9 @@ describe("solar UI", () => {
     expect(input('input[type="datetime-local"]').value).toContain("2026-04-02");
     expect(plotPixels()).not.toBe(before);
     expect(hasMarkerColor(0.25, 80, [31, 119, 180])).toBe(true);
+    for (let angle = 70; angle < 80; angle += 0.5) {
+      expect(hasMarkerColor(0.25, angle, [31, 119, 180], 0)).toBe(true);
+    }
   });
 
   it("toggles the legend and spans the available window width", async () => {
@@ -131,7 +224,7 @@ describe("solar UI", () => {
   it("advances playback at the chosen speed and stops when paused", async () => {
     const initial = elevationText();
     const initialTime = input('input[type="datetime-local"]').value;
-    setRange("Playback speed", 100);
+    setRange("Playback speed (v)", 100);
     await page.getByRole("switch", { name: "Live play" }).click();
     await expect.poll(() => input('input[type="datetime-local"]').value).not.toBe(initialTime);
     await expect.poll(elevationText).not.toBe(initial);
@@ -140,10 +233,10 @@ describe("solar UI", () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(elevationText()).toBe(paused);
     await page.getByRole("button", { name: "Real time (1×)" }).click();
-    expect(input('input[aria-label="Playback speed"]').valueAsNumber).toBe(1);
-    setRange("Playback speed", 0.5);
+    expect(input('input[aria-label="Playback speed (v)"]').valueAsNumber).toBe(1);
+    setRange("Playback speed (v)", 0.5);
     await nextTick();
-    await expect.element(page.getByText("Speed: 0.5×")).toBeVisible();
+    await expect.element(page.getByText("Speed (v): 0.5×")).toBeVisible();
   });
 
   it("draws seasonal, horizon, and annual limit markers and the formula", async () => {
@@ -160,12 +253,18 @@ describe("solar UI", () => {
     }
     expect(hasMarkerColor(0.15, 0, [0, 0, 0])).toBe(true);
     expect(hasMarkerColor(0.15, 65.25, [44, 160, 44])).toBe(true);
-    expect(hasMarkerColor(0.65, -65.25, [214, 39, 40])).toBe(true);
+    expect(hasMarkerColor(0.65, -65.25, [214, 39, 40])).toBe(false);
+    expect(hasMarkerColor(0.65, 18.37, [255, 127, 14])).toBe(true);
     const math = host.querySelector("math");
     expect(math).not.toBeNull();
-    await expect.element(page.getByRole("link", { name: "NOAA formula" })).toBeVisible();
-    await page.getByText("Full formula and daily limits").click();
-    await expect.element(page.getByText(/Daily maximum = 90°/)).toBeVisible();
+    expect(host.querySelector("details")).toBeNull();
+    expect(host.querySelector("h2")).toBeNull();
+    expect(page.getByRole("img", { name: "Latitude φ illustration" }).element()).toBeVisible();
+    expect(page.getByRole("img", { name: "Year position t illustration" }).element()).toBeVisible();
+    expect(
+      page.getByRole("img", { name: "Solar hour angle H illustration" }).element(),
+    ).toBeVisible();
+    expect(page.getByRole("img", { name: "Sun angle α illustration" }).element()).toBeVisible();
   });
 
   it("does not change the timestamp when dragging horizontally or vertically", async () => {

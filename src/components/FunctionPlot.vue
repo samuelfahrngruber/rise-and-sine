@@ -12,10 +12,16 @@ const props = withDefaults(
     xLabel?: string;
     yLabel?: string;
     yRange?: [number, number];
+    xRange?: [number, number];
+    xIncrements?: number[];
+    formatX?: (value: number) => string;
   }>(),
   { markers: () => [], showLegend: false, xLabel: "x", yLabel: "y" },
 );
-const emit = defineEmits<{ selectX: [value: number] }>();
+const emit = defineEmits<{
+  selectX: [value: number];
+  "update:xRange": [range: [number, number]];
+}>();
 const container = useTemplateRef<HTMLDivElement>("container");
 let plot: uPlot | undefined;
 let resizeObserver: ResizeObserver | undefined;
@@ -43,6 +49,13 @@ function seriesOptions(series: PlotSeries, index: number): uPlot.Series {
   };
 }
 
+function notifyZoom(chart: uPlot, scale: string): void {
+  if (!plot || scale !== "x") return;
+  const { min, max } = chart.scales.x!;
+  if (min == null || max == null) return;
+  if (props.xRange?.[0] !== min || props.xRange?.[1] !== max) emit("update:xRange", [min, max]);
+}
+
 function drawMarkers(chart: uPlot): void {
   const { ctx, bbox } = chart;
   const pixelRatio = window.devicePixelRatio;
@@ -51,14 +64,16 @@ function drawMarkers(chart: uPlot): void {
   ctx.beginPath();
   ctx.rect(bbox.left, bbox.top, bbox.width, bbox.height);
   ctx.clip();
-  ctx.lineWidth = pixelRatio;
-  ctx.setLineDash([4 * pixelRatio, 4 * pixelRatio]);
 
   for (const marker of props.markers) {
     if (!Number.isFinite(marker.value)) continue;
+    ctx.lineWidth = (marker.width ?? 1) * pixelRatio;
+    ctx.setLineDash(marker.lineStyle === "solid" ? [] : [4 * pixelRatio, 4 * pixelRatio]);
 
     const vertical = marker.orientation === "vertical";
-    const position = chart.valToPos(marker.value, vertical ? "x" : "y", true);
+    const position =
+      Math.round(chart.valToPos(marker.value, vertical ? "x" : "y", true)) +
+      (Math.round(ctx.lineWidth) % 2) / 2;
     ctx.strokeStyle = marker.color ?? "#666";
     ctx.beginPath();
     if (vertical) {
@@ -96,23 +111,47 @@ onMounted(() => {
   plot = new uPlot(
     {
       width: element.clientWidth,
-      height: 320,
+      height: 520,
       scales: { x: { time: false }, y: { range: props.yRange } },
       series: [{ label: "x" }, ...props.data.series.map(seriesOptions)],
-      axes: [{ label: props.xLabel }, { label: props.yLabel }],
+      axes: [
+        {
+          label: props.xLabel,
+          incrs: props.xIncrements,
+          splits: props.xIncrements
+            ? (_chart, _axis, min, max, increment) => {
+                const tickIncrement = props.xIncrements!.reduce(
+                  (closest, value) =>
+                    Math.abs(value - increment) < Math.abs(closest - increment) ? value : closest,
+                  props.xIncrements![0]!,
+                );
+                const first = Math.ceil(min / tickIncrement) * tickIncrement;
+                const count = Math.max(0, Math.floor((max - first) / tickIncrement + 1e-8) + 1);
+                return Array.from({ length: count }, (_, index) => first + index * tickIncrement);
+              }
+            : undefined,
+          space: props.formatX ? 130 : 50,
+          values: props.formatX
+            ? (_chart, values) => values.map((value) => props.formatX!(value))
+            : undefined,
+        },
+        { label: props.yLabel },
+      ],
       legend: { show: true },
       cursor: { y: false, drag: { x: true, y: false, dist: 5 } },
-      hooks: { draw: [drawMarkers] },
+      hooks: { draw: [drawMarkers], setScale: [notifyZoom] },
     },
     [props.data.x, ...props.data.series.map((series) => series.values)],
     element,
   );
 
+  if (props.xRange) plot.setScale("x", { min: props.xRange[0], max: props.xRange[1] });
+
   plot.over.addEventListener("pointerdown", recordPointer);
   plot.over.addEventListener("click", selectPosition, true);
 
   resizeObserver = new ResizeObserver(() => {
-    plot?.setSize({ width: element.clientWidth, height: 320 });
+    plot?.setSize({ width: element.clientWidth, height: 520 });
   });
   resizeObserver.observe(element);
 });
@@ -142,7 +181,8 @@ watch(
         options.forEach((series) => chart.addSeries(series));
       }
       chart.setData([data.x, ...data.series.map((series) => series.values)], false);
-      chart.setScale("x", { min: chart.scales.x!.min!, max: chart.scales.x!.max! });
+      const range = props.xRange ?? [chart.scales.x!.min!, chart.scales.x!.max!];
+      chart.setScale("x", { min: range[0]!, max: range[1]! });
     });
   },
 );
@@ -151,6 +191,15 @@ watch(
   () => props.markers,
   () => plot?.redraw(false, false),
   { deep: true },
+);
+
+watch(
+  () => props.xRange,
+  (range) => {
+    if (range && plot && (plot.scales.x!.min !== range[0] || plot.scales.x!.max !== range[1])) {
+      plot.setScale("x", { min: range[0], max: range[1] });
+    }
+  },
 );
 
 onBeforeUnmount(() => {

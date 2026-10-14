@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { fromDateTimeInput, toDateTimeInput } from "../year-time";
+import {
+  fromDateTimeInput,
+  toDateTimeInput,
+  timestampAtPosition,
+  yearPosition,
+} from "../year-time";
 
 const timestamp = defineModel<number>({ required: true });
 const playing = defineModel<boolean>("playing", { required: true });
@@ -13,13 +18,31 @@ function selectTimestamp(event: Event): void {
   const selected = fromDateTimeInput(value);
   if (selected !== undefined) timestamp.value = selected;
 }
+
+function selectYearPosition(event: Event): void {
+  const value = (event.target as HTMLInputElement).valueAsNumber;
+  if (Number.isFinite(value) && value >= 0 && value <= 1) {
+    timestamp.value = timestampAtPosition(value, new Date(timestamp.value).getFullYear());
+  }
+}
 </script>
 
 <template>
   <fieldset>
-    <legend>Date and time</legend>
+    <legend>Date and time (t)</legend>
     <label>
-      Local time ({{ timeZone }})
+      Year position (t)
+      <input
+        type="number"
+        min="0"
+        max="1"
+        step="0.00000001"
+        :value="yearPosition(timestamp).toFixed(8)"
+        @input="selectYearPosition"
+      />
+    </label>
+    <label>
+      Local time (t, {{ timeZone }})
       <input
         type="datetime-local"
         step="1"
@@ -30,10 +53,10 @@ function selectTimestamp(event: Event): void {
     <button type="button" @click="timestamp = Date.now()">Now</button>
     <label><input v-model="playing" type="checkbox" role="switch" /> Live play</label>
     <label>
-      Speed: {{ speed }}×
+      Speed (v): {{ speed }}×
       <input
         v-model.number="speed"
-        aria-label="Playback speed"
+        aria-label="Playback speed (v)"
         type="range"
         min="0.5"
         max="100"

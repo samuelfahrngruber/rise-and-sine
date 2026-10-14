@@ -10,9 +10,9 @@ function updateLatitude(event: Event): void {
 
 <template>
   <fieldset>
-    <legend>Latitude</legend>
+    <legend>Latitude (φ)</legend>
     <label>
-      Degrees north
+      Degrees north (φ)
       <input
         type="number"
         min="-90"
@@ -23,7 +23,7 @@ function updateLatitude(event: Event): void {
       />
     </label>
     <input
-      aria-label="Latitude"
+      aria-label="Latitude (φ)"
       type="range"
       min="-90"
       max="90"
