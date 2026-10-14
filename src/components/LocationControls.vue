@@ -1,6 +1,13 @@
 <script setup lang="ts">
+import LocationSearch from "./LocationSearch.vue";
+import type { Location } from "../location-api";
 const latitude = defineModel<number>("latitude", { required: true });
 const longitude = defineModel<number>("longitude", { required: true });
+
+function selectLocation(location: Location): void {
+  latitude.value = location.latitude;
+  longitude.value = location.longitude;
+}
 
 function updateLatitude(event: Event): void {
   const input = event.target as HTMLInputElement;
@@ -17,6 +24,7 @@ function updateLongitude(event: Event): void {
 <template>
   <fieldset>
     <legend>Location</legend>
+    <LocationSearch :latitude="latitude" :longitude="longitude" @select="selectLocation" />
     <label>
       Degrees north (φ)
       <input
