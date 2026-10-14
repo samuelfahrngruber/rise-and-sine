@@ -132,6 +132,7 @@ function formatX(position: number): string {
       :longitude="longitude"
       :timestamp="timestamp"
       :elevation="selectedElevation"
+      :speed="speed"
     />
     <LocationControls v-model:latitude="latitude" v-model:longitude="longitude" />
     <TimestampControls v-model="timestamp" v-model:playing="playing" v-model:speed="speed" />

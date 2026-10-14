@@ -78,6 +78,53 @@ async function waitForDraw(): Promise<void> {
 }
 
 describe("solar UI", () => {
+  it("defines the solar functions beneath the main equation and illustrates every symbol", async () => {
+    const main = host.querySelector("math")!;
+    for (const label of [
+      "Solar declination equation",
+      "Solar hour angle equation",
+      "Equation of time definition",
+      "Year phase equation",
+    ]) {
+      const equation = host.querySelector(`math[aria-label="${label}"]`)!;
+      expect(equation).not.toBeNull();
+      expect(
+        main.compareDocumentPosition(equation) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    for (const name of [
+      "Latitude φ illustration",
+      "Longitude λ illustration",
+      "Year position t illustration",
+      "Sun angle α illustration",
+      "Solar declination δ(t) illustration",
+      "Solar hour angle H(λ, t) illustration",
+      "Equation of time E(t) illustration",
+      "Year phase γ(t) illustration",
+      "UTC minutes m(t) illustration",
+      "Elapsed days u(t) illustration",
+      "Days in year D illustration",
+      "Playback speed v illustration",
+    ]) {
+      expect(page.getByRole("img", { name }).element()).toBeVisible();
+    }
+    expect(page.getByRole("link", { name: "equation of time" }).element()).toHaveAttribute(
+      "href",
+      "https://en.wikipedia.org/wiki/Equation_of_time",
+    );
+    const correction = page
+      .getByRole("img", { name: "Equation of time E(t) illustration" })
+      .element();
+    const before = correction.querySelector("circle")!.getAttribute("cx");
+    await page.getByRole("spinbutton", { name: "Year position (t)" }).fill("0.75");
+    await waitForDraw();
+    expect(correction.querySelector("circle")!.getAttribute("cx")).not.toBe(before);
+    setRange("Playback speed (v)", 100);
+    await nextTick();
+    expect(
+      page.getByRole("img", { name: "Playback speed v illustration" }).element().textContent,
+    ).toContain("100 simulated s");
+  });
   it("syncs longitude controls and updates the curve while keeping the selected time and zoom", async () => {
     const number = page.getByRole("spinbutton", { name: "Degrees east (λ)" });
     const slider = page.getByRole("slider", { name: "Longitude (λ)" });
@@ -107,8 +154,10 @@ describe("solar UI", () => {
     const timestamp = new Date(input('input[type="datetime-local"]').value).getTime();
     expect(Math.abs(timestamp - new Date(selected).getTime() - 60 * 60_000)).toBeLessThan(15_000);
     expect(host.querySelector("math")!.textContent).toContain("λ");
-    expect(host.querySelector("math")!.textContent).not.toContain("H");
-    expect(host.querySelector('[aria-label="Solar hour angle H illustration"]')).toBeNull();
+    expect(host.querySelector("math")!.textContent).toContain("H");
+    expect(
+      page.getByRole("img", { name: "Solar hour angle H(λ, t) illustration" }).element(),
+    ).toBeVisible();
   });
   it("syncs an editable year position with date/time, chart selection, and playback", async () => {
     const yearInput = page.getByRole("spinbutton", { name: "Year position (t)" });
