@@ -9,6 +9,26 @@ import {
 import { validatePlotData } from "./plot-data";
 
 describe("sun elevation contract", () => {
+  it("applies a new longitude to cached yearly samples", () => {
+    const samples = sampleSolarYear(2026, 0);
+    const east = solarYearPlot(samples, VIENNA_LATITUDE, 90);
+    const west = solarYearPlot(samples, VIENNA_LATITUDE, -90);
+    const start = new Date(2026, 0, 1).getTime();
+    const end = new Date(2027, 0, 1).getTime();
+    const index = 172 * 1440 + 12 * 60;
+    const timestamp = start + samples.x[index]! * (end - start);
+    expect(east.series[0]!.values[index]).toBeCloseTo(
+      sunElevation(timestamp, VIENNA_LATITUDE, 90),
+      8,
+    );
+    expect(west.series[0]!.values[index]).toBeCloseTo(
+      sunElevation(timestamp, VIENNA_LATITUDE, -90),
+      8,
+    );
+    expect(east.series[0]!.values[index]).not.toBeCloseTo(west.series[0]!.values[index], 2);
+    expect(east.series[1]!.values).toEqual(west.series[1]!.values);
+    expect(east.series[2]!.values).toEqual(west.series[2]!.values);
+  });
   it("measures hour angle from solar noon and shifts it with longitude", () => {
     const timestamp = Date.UTC(2026, 5, 21, 12);
     expect(Math.abs(sunHourAngle(timestamp, 0))).toBeLessThan(2);

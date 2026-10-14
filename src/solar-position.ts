@@ -10,10 +10,12 @@ interface SolarBasis {
   declination: number;
   hourAngle: number;
   sinDeclination: number;
+  cosDeclination: number;
   cosDeclinationHourAngle: number;
 }
 
 export interface SolarYear {
+  longitude: number;
   x: number[];
   positions: SolarBasis[];
 }
@@ -52,6 +54,7 @@ function solarBasis(timestamp: number, longitude: number): SolarBasis {
     declination: declination / RADIANS,
     hourAngle,
     sinDeclination: Math.sin(declination),
+    cosDeclination: Math.cos(declination),
     cosDeclinationHourAngle: Math.cos(declination) * Math.cos(hourAngle),
   };
 }
@@ -60,8 +63,17 @@ export function sunHourAngle(timestamp: number, longitude = VIENNA_LONGITUDE): n
   return solarBasis(timestamp, longitude).hourAngle / RADIANS;
 }
 
-function elevation(basis: SolarBasis, sinLatitude: number, cosLatitude: number): number {
-  const sine = sinLatitude * basis.sinDeclination + cosLatitude * basis.cosDeclinationHourAngle;
+function elevation(
+  basis: SolarBasis,
+  sinLatitude: number,
+  cosLatitude: number,
+  longitudeOffset = 0,
+): number {
+  const cosine =
+    longitudeOffset === 0
+      ? basis.cosDeclinationHourAngle
+      : basis.cosDeclination * Math.cos(basis.hourAngle + longitudeOffset);
+  const sine = sinLatitude * basis.sinDeclination + cosLatitude * cosine;
   return Math.asin(Math.max(-1, Math.min(1, sine))) / RADIANS;
 }
 
@@ -89,20 +101,28 @@ export function sampleSolarYear(
     (_, index) => (index - extraMinutes) / minutes,
   );
   return {
+    longitude,
     x,
     positions: x.map((position) => solarBasis(start + position * (end - start), longitude)),
   };
 }
 
-export function solarYearPlot(samples: SolarYear, latitude: number): PlotData {
+export function solarYearPlot(
+  samples: SolarYear,
+  latitude: number,
+  longitude = samples.longitude,
+): PlotData {
   const sinLatitude = Math.sin(latitude * RADIANS);
   const cosLatitude = Math.cos(latitude * RADIANS);
+  const longitudeOffset = (longitude - samples.longitude) * RADIANS;
   return {
     x: samples.x,
     series: [
       {
         label: "Elevation",
-        values: samples.positions.map((basis) => elevation(basis, sinLatitude, cosLatitude)),
+        values: samples.positions.map((basis) =>
+          elevation(basis, sinLatitude, cosLatitude, longitudeOffset),
+        ),
       },
       {
         label: "Daily maximum",
