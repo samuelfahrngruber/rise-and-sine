@@ -12,6 +12,6 @@
       <li>Reuse the location, timestamp, playback, and plot controls.</li>
       <li>Test solar positions and horizon crossings against reference data.</li>
     </ul>
-    <a href="/">Back to approximate mode</a>
+    <a href="../">Back to approximate mode</a>
   </main>
 </template>

@@ -100,7 +100,7 @@ describe("solar UI", () => {
     expect(page.getByText("Add observer altitude.").element()).toBeVisible();
     expect(page.getByRole("link", { name: "Back to approximate mode" }).element()).toHaveAttribute(
       "href",
-      "/",
+      "../",
     );
     expect(host.querySelector("canvas")).toBeNull();
     expect(host.querySelector("input")).toBeNull();
@@ -129,7 +129,7 @@ describe("solar UI", () => {
       expect(page.getByRole("img", { name }).element()).toBeVisible();
     }
     const accurate = page.getByRole("link", { name: "Accurate", exact: true });
-    expect(accurate.element()).toHaveAttribute("href", "/accurate/");
+    expect(accurate.element()).toHaveAttribute("href", "./accurate/");
     expect(accurate.element().closest("header")).toBe(
       page.getByRole("heading", { name: "Rise and Sine" }).element().closest("header"),
     );
