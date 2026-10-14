@@ -4,6 +4,7 @@ import FunctionDiagram from "./FunctionDiagram.vue";
 import {
   EARTH_TILT,
   equinoxPosition,
+  initialRotation,
   solarTime,
   sunDeclination,
   sunHourAngle,
@@ -33,7 +34,11 @@ const declination = computed(() => yearTimes.value.map(sunDeclination));
 const hourAngle = computed(() =>
   dayTimes.value.map((timestamp) => sunHourAngle(timestamp, props.longitude)),
 );
-const dayMinutes = computed(() => dayTimes.value.map((timestamp) => solarTime(timestamp).minutes));
+const startRotation = computed(() => initialRotation(year.value));
+const rotationPoint = computed(() => ({
+  x: 64 + 42 * Math.cos(startRotation.value),
+  y: 64 - 42 * Math.sin(startRotation.value),
+}));
 const tiltRadians = (EARTH_TILT * Math.PI) / 180;
 const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 - 26 * Math.cos(tiltRadians)}`;
 </script>
@@ -52,7 +57,7 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
     />
     <FunctionDiagram
       name="Solar hour angle H(λ, t) illustration"
-      caption="Hour angle H(λ, t) (°)"
+      caption="Daily rotation H(λ, t) (°)"
       :points="hourAngle"
       :minimum="-180"
       :maximum="180"
@@ -61,16 +66,23 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
       x-label="UTC day"
       :jump-limit="180"
     />
-    <FunctionDiagram
-      name="UTC minutes m(t) illustration"
-      caption="UTC minutes m(t)"
-      :points="dayMinutes"
-      :minimum="0"
-      :maximum="1440"
-      :position="time.minutes / 1440"
-      :value="time.minutes"
-      x-label="UTC day"
-    />
+    <figure>
+      <svg
+        width="112"
+        height="112"
+        viewBox="0 0 128 128"
+        role="img"
+        aria-label="Start rotation θ₀ illustration"
+      >
+        <circle cx="64" cy="64" r="42" fill="none" stroke="currentColor" />
+        <path d="M 64 64 H 106" stroke="currentColor" stroke-dasharray="3 3" />
+        <line x1="64" y1="64" :x2="rotationPoint.x" :y2="rotationPoint.y" stroke="currentColor" />
+        <circle :cx="rotationPoint.x" :cy="rotationPoint.y" r="3" />
+        <text x="66" y="87">θ₀</text>
+        <text x="64" y="123" text-anchor="middle" font-size="10">Jan 1 · t = 0</text>
+      </svg>
+      <figcaption>Start rotation θ₀</figcaption>
+    </figure>
     <figure>
       <svg
         width="112"

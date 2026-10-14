@@ -79,6 +79,18 @@ async function waitForDraw(): Promise<void> {
 }
 
 describe("solar UI", () => {
+  it("shows 365 or 366 daily rotations as the selected year changes", async () => {
+    const equation = () => host.querySelector('math[aria-label="Solar hour angle equation"]')!;
+    expect(equation().textContent).toContain("365");
+    expect(equation().textContent).not.toMatch(/720|1440|mod/);
+    await page.getByLabelText("Local time (t, Europe/Vienna)").fill("2024-06-21T12:00");
+    await waitForDraw();
+    expect(equation().textContent).toContain("366");
+    await page.getByLabelText("Local time (t, Europe/Vienna)").fill("2025-06-21T12:00");
+    await waitForDraw();
+    expect(equation().textContent).toContain("365");
+  });
+
   it("leaves accurate mode as future instructions without controls or a chart", async () => {
     app.unmount();
     app = createApp(AccuratePage);
@@ -110,7 +122,7 @@ describe("solar UI", () => {
       "Sun angle α illustration",
       "Solar declination δ(t) illustration",
       "Solar hour angle H(λ, t) illustration",
-      "UTC minutes m(t) illustration",
+      "Start rotation θ₀ illustration",
       "Earth tilt ε illustration",
       "Reference equinox tₑ illustration",
       "Playback speed v illustration",

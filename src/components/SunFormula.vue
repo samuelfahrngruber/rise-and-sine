@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import ParameterDiagrams from "./ParameterDiagrams.vue";
+import { computed } from "vue";
 import SolarFunctionDiagrams from "./SolarFunctionDiagrams.vue";
 import { EARTH_TILT } from "../solar-position";
+import { daysInYear } from "../year-time";
 
-defineProps<{
+const props = defineProps<{
   latitude: number;
   longitude: number;
   timestamp: number;
   elevation: number;
   speed: number;
 }>();
+const days = computed(() => daysInYear(new Date(props.timestamp).getFullYear()));
 </script>
 
 <template>
@@ -49,19 +52,19 @@ defineProps<{
       <math display="block" aria-label="Solar hour angle equation">
         <mrow
           ><mi>H</mi><mo>(</mo><mi mathvariant="normal">λ</mi><mo>,</mo><mi>t</mi><mo>)</mo
-          ><mo>=</mo> <mfrac><mi mathvariant="normal">π</mi><mn>720</mn></mfrac
-          ><mo>(</mo> <mo>(</mo><mi>m</mi><mo>(</mo><mi>t</mi><mo>)</mo><mo>+</mo><mn>4</mn
-          ><mi mathvariant="normal">λ</mi><mo>)</mo> <mo>mod</mo><mn>1440</mn><mo>−</mo><mn>720</mn
-          ><mo>)</mo>
+          ><mo>=</mo><mn>2</mn><mi mathvariant="normal">π</mi><mo>·</mo><mn>{{ days }}</mn
+          ><mo>·</mo><mi>t</mi> <mo>+</mo><mi mathvariant="normal">λ</mi><mo>+</mo
+          ><msub><mi mathvariant="normal">θ</mi><mn>0</mn></msub>
         </mrow>
       </math>
     </div>
     <p>
-      φ: latitude. λ: longitude in degrees east. t: year position. δ: declination. H: hour angle.
+      φ: latitude. λ: longitude east. t: year position. δ: declination. H: daily rotation angle.
     </p>
     <p>
-      ε: Earth’s tilt ({{ EARTH_TILT }}°). tₑ: March 21 at 12:00 UTC as a year position. m(t): UTC
-      minutes since midnight. φ, ε, δ, and H use radians in the formulas.
+      ε: Earth’s tilt ({{ EARTH_TILT }}°). tₑ: March 21 at 12:00 UTC as a year position. θ₀:
+      rotation at January 1, 00:00 local time, at zero longitude. Angle inputs use degrees; the
+      formulas use radians.
     </p>
     <p>
       t = (selected date/time − start of year) / (start of next year − start of year). Playback
@@ -80,5 +83,9 @@ defineProps<{
 <style scoped>
 .equation {
   overflow-x: auto;
+}
+
+.equation + .equation {
+  margin-top: 1.5rem;
 }
 </style>
