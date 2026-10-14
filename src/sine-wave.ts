@@ -10,5 +10,5 @@ export function createSineWave(sampleCount = 361): PlotData {
     (_, index) => (index / (sampleCount - 1)) * 2 * Math.PI,
   );
 
-  return { x, y: x.map((value) => Math.sin(value)) };
+  return { x, series: [{ label: "sin(x)", values: x.map((value) => Math.sin(value)) }] };
 }

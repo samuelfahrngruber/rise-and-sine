@@ -3,7 +3,8 @@ import { createSineWave } from "./sine-wave";
 
 describe("createSineWave", () => {
   it("covers one full cycle with matching, ascending columns", () => {
-    const { x, y } = createSineWave();
+    const { x, series } = createSineWave();
+    const y = series[0]!.values;
 
     expect(x.length).toBeGreaterThanOrEqual(2);
     expect(y).toHaveLength(x.length);
@@ -14,7 +15,7 @@ describe("createSineWave", () => {
   });
 
   it("passes through the sine wave's zeros and extrema", () => {
-    const { y } = createSineWave(5);
+    const y = createSineWave(5).series[0]!.values;
 
     [0, 1, 0, -1, 0].forEach((expected, index) => {
       expect(y[index]).toBeCloseTo(expected);
