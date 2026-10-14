@@ -32,7 +32,10 @@ defineProps<{ latitude: number; longitude: number; timestamp: number; elevation:
       φ: latitude. λ: longitude in degrees east. t: year position. δ(t): solar declination. φ and δ
       use radians in the formula.
     </p>
-    <p>m(t): UTC minutes since midnight. E(t): the equation of time in minutes.</p>
+    <p>
+      m(t): UTC minutes since midnight. E(t): the
+      <a href="https://en.wikipedia.org/wiki/Equation_of_time">equation of time</a> in minutes.
+    </p>
     <p>
       t = (selected date/time − start of year) / (start of next year − start of year). Playback
       advances the selected date/time by v × elapsed time.
