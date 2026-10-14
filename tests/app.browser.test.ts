@@ -78,6 +78,38 @@ async function waitForDraw(): Promise<void> {
 }
 
 describe("solar UI", () => {
+  it("syncs longitude controls and updates the curve while keeping the selected time and zoom", async () => {
+    const number = page.getByRole("spinbutton", { name: "Degrees east (λ)" });
+    const slider = page.getByRole("slider", { name: "Longitude (λ)" });
+    expect((number.element() as HTMLInputElement).valueAsNumber).toBe(16.3738);
+    expect((slider.element() as HTMLInputElement).valueAsNumber).toBe(16.3738);
+    expect(number.element().closest("fieldset")).toBe(
+      page.getByRole("spinbutton", { name: "Degrees north (φ)" }).element().closest("fieldset"),
+    );
+    await page.getByRole("button", { name: "Zoom to next 2 hours", exact: true }).click();
+    await waitForDraw();
+    const selected = input('input[type="datetime-local"]').value;
+    const before = plotPixels();
+    await number.fill("-90");
+    await waitForDraw();
+    expect((slider.element() as HTMLInputElement).valueAsNumber).toBe(-90);
+    expect(input('input[type="datetime-local"]').value).toBe(selected);
+    expect(plotPixels()).not.toBe(before);
+    const west = plotPixels();
+    setRange("Longitude (λ)", 90);
+    await waitForDraw();
+    expect((number.element() as HTMLInputElement).valueAsNumber).toBe(90);
+    expect(plotPixels()).not.toBe(west);
+    const overlay = plotOverlay();
+    const { width, height } = overlay.getBoundingClientRect();
+    await page.elementLocator(overlay).click({ position: { x: width / 2, y: height / 2 } });
+    await waitForDraw();
+    const timestamp = new Date(input('input[type="datetime-local"]').value).getTime();
+    expect(Math.abs(timestamp - new Date(selected).getTime() - 60 * 60_000)).toBeLessThan(15_000);
+    expect(host.querySelector("math")!.textContent).toContain("λ");
+    expect(host.querySelector("math")!.textContent).not.toContain("H");
+    expect(host.querySelector('[aria-label="Solar hour angle H illustration"]')).toBeNull();
+  });
   it("syncs an editable year position with date/time, chart selection, and playback", async () => {
     const yearInput = page.getByRole("spinbutton", { name: "Year position (t)" });
     await yearInput.fill("0.25");
@@ -256,9 +288,7 @@ describe("solar UI", () => {
     expect(host.querySelector("h2")).toBeNull();
     expect(page.getByRole("img", { name: "Latitude φ illustration" }).element()).toBeVisible();
     expect(page.getByRole("img", { name: "Year position t illustration" }).element()).toBeVisible();
-    expect(
-      page.getByRole("img", { name: "Solar hour angle H illustration" }).element(),
-    ).toBeVisible();
+    expect(page.getByRole("img", { name: "Longitude λ illustration" }).element()).toBeVisible();
     expect(page.getByRole("img", { name: "Sun angle α illustration" }).element()).toBeVisible();
   });
 

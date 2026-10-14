@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import FunctionPlot from "./components/FunctionPlot.vue";
-import LatitudeControls from "./components/LatitudeControls.vue";
+import LocationControls from "./components/LocationControls.vue";
 import TimestampControls from "./components/TimestampControls.vue";
 import SunFormula from "./components/SunFormula.vue";
 import PlotZoomControls from "./components/PlotZoomControls.vue";
@@ -24,6 +24,7 @@ import {
 import { usePlayback } from "./use-playback";
 
 const latitude = ref(VIENNA_LATITUDE);
+const longitude = ref(VIENNA_LONGITUDE);
 const timestamp = ref(Date.now());
 const playing = ref(false);
 const speed = ref(1);
@@ -53,7 +54,7 @@ watch(year, () => {
   if (window && (timestamp.value < window[0] || timestamp.value > window[1]))
     visibleWindow.value = undefined;
 });
-const samples = computed(() => sampleSolarYear(year.value, VIENNA_LONGITUDE, 120));
+const samples = computed(() => sampleSolarYear(year.value, 0, 120));
 const xIncrements = computed(() => {
   const { start, end } = yearBounds(year.value);
   return [
@@ -67,9 +68,11 @@ const axisDate = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
   hourCycle: "h23",
 });
-const data = computed(() => solarYearPlot(samples.value, latitude.value));
+const data = computed(() => solarYearPlot(samples.value, latitude.value, longitude.value));
 const selectedPosition = computed(() => yearPosition(timestamp.value));
-const selectedElevation = computed(() => sunElevation(timestamp.value, latitude.value));
+const selectedElevation = computed(() =>
+  sunElevation(timestamp.value, latitude.value, longitude.value),
+);
 const maximum = computed(() =>
   data.value.series[1]!.values.reduce((max, value) => Math.max(max, value), -90),
 );
@@ -124,8 +127,13 @@ function formatX(position: number): string {
 <template>
   <main>
     <h1>Rise and Sine</h1>
-    <SunFormula :latitude="latitude" :timestamp="timestamp" :elevation="selectedElevation" />
-    <LatitudeControls v-model="latitude" />
+    <SunFormula
+      :latitude="latitude"
+      :longitude="longitude"
+      :timestamp="timestamp"
+      :elevation="selectedElevation"
+    />
+    <LocationControls v-model:latitude="latitude" v-model:longitude="longitude" />
     <TimestampControls v-model="timestamp" v-model:playing="playing" v-model:speed="speed" />
     <figure>
       <PlotZoomControls

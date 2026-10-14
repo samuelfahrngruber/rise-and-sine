@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { yearPosition } from "../year-time";
-import { sunHourAngle } from "../solar-position";
 
-const props = defineProps<{ latitude: number; timestamp: number; elevation: number }>();
+const props = defineProps<{
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+  elevation: number;
+}>();
 
 function point(angle: number, radius: number): { x: number; y: number } {
   const radians = (angle * Math.PI) / 180;
@@ -18,8 +22,7 @@ function angleArc(angle: number): string {
 const observer = computed(() => point(props.latitude, 42));
 const sun = computed(() => point(props.elevation, 42));
 const yearProgress = computed(() => yearPosition(props.timestamp));
-const hourAngle = computed(() => sunHourAngle(props.timestamp));
-const hourSun = computed(() => point(-hourAngle.value, 42));
+const meridian = computed(() => point(props.longitude, 42));
 </script>
 
 <template>
@@ -74,17 +77,17 @@ const hourSun = computed(() => point(-hourAngle.value, 42));
         height="112"
         viewBox="0 0 128 128"
         role="img"
-        aria-label="Solar hour angle H illustration"
+        aria-label="Longitude λ illustration"
       >
         <circle cx="64" cy="64" r="42" fill="none" stroke="currentColor" />
         <path d="M 64 64 H 106" fill="none" stroke="currentColor" stroke-dasharray="3 3" />
-        <path :d="angleArc(-hourAngle)" fill="none" stroke="currentColor" />
-        <line x1="64" y1="64" :x2="hourSun.x" :y2="hourSun.y" stroke="currentColor" />
-        <circle :cx="hourSun.x" :cy="hourSun.y" r="4" fill="none" stroke="currentColor" />
-        <text x="74" y="85">H</text>
-        <text x="86" y="58" font-size="10">Noon</text>
+        <path :d="angleArc(longitude)" fill="none" stroke="currentColor" />
+        <line x1="64" y1="64" :x2="meridian.x" :y2="meridian.y" stroke="currentColor" />
+        <circle :cx="meridian.x" :cy="meridian.y" r="3" />
+        <text x="76" :y="longitude < 0 ? 82 : 56">λ</text>
+        <text x="108" y="68" font-size="10">0°</text>
       </svg>
-      <figcaption>Hour angle H</figcaption>
+      <figcaption>Longitude λ</figcaption>
     </figure>
     <figure>
       <svg
