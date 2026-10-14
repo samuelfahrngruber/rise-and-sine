@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import FunctionDiagram from "./FunctionDiagram.vue";
+import VariableCard from "./VariableCard.vue";
 import {
   EARTH_TILT,
   equinoxPosition,
@@ -11,7 +12,7 @@ import {
 } from "../solar-position";
 import { yearBounds, yearPosition } from "../year-time";
 
-const props = defineProps<{ timestamp: number; longitude: number; speed: number }>();
+const props = defineProps<{ timestamp: number; longitude: number }>();
 const date = computed(() => new Date(props.timestamp));
 const year = computed(() => date.value.getFullYear());
 const time = computed(() => solarTime(props.timestamp));
@@ -45,28 +46,42 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
 
 <template>
   <div class="diagrams">
-    <FunctionDiagram
-      name="Solar declination δ(t) illustration"
-      caption="Declination δ(t) (°)"
-      :points="declination"
-      :minimum="-24"
-      :maximum="24"
-      :position="progress"
-      :value="sunDeclination(timestamp)"
-      x-label="Year"
-    />
-    <FunctionDiagram
-      name="Solar hour angle H(λ, t) illustration"
-      caption="Daily rotation H(λ, t) (°)"
-      :points="hourAngle"
-      :minimum="-180"
-      :maximum="180"
-      :position="time.minutes / 1440"
-      :value="sunHourAngle(timestamp, longitude)"
-      x-label="UTC day"
-      :jump-limit="180"
-    />
-    <figure>
+    <VariableCard
+      symbol="δ(t)"
+      title="Declination"
+      description="Seasonal angle above Earth’s equatorial plane"
+    >
+      <FunctionDiagram
+        name="Solar declination δ(t) illustration"
+        :points="declination"
+        :minimum="-24"
+        :maximum="24"
+        :position="progress"
+        :value="sunDeclination(timestamp)"
+        x-label="Year"
+      />
+    </VariableCard>
+    <VariableCard
+      symbol="H(λ, t)"
+      title="Daily rotation"
+      description="Angle relative to solar noon"
+    >
+      <FunctionDiagram
+        name="Solar hour angle H(λ, t) illustration"
+        :points="hourAngle"
+        :minimum="-180"
+        :maximum="180"
+        :position="time.minutes / 1440"
+        :value="sunHourAngle(timestamp, longitude)"
+        x-label="UTC day"
+        :jump-limit="180"
+      />
+    </VariableCard>
+    <VariableCard
+      symbol="θ₀"
+      title="Start rotation"
+      description="January 1, 00:00 local time, at zero longitude"
+    >
       <svg
         width="112"
         height="112"
@@ -81,9 +96,8 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
         <text x="66" y="87">θ₀</text>
         <text x="64" y="123" text-anchor="middle" font-size="10">Jan 1 · t = 0</text>
       </svg>
-      <figcaption>Start rotation θ₀</figcaption>
-    </figure>
-    <figure>
+    </VariableCard>
+    <VariableCard symbol="ε" title="Earth’s tilt" :description="`${EARTH_TILT}°`">
       <svg
         width="112"
         height="112"
@@ -102,9 +116,8 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
         <text x="77" y="34">ε</text>
         <text x="64" y="124" text-anchor="middle" font-size="10">{{ EARTH_TILT }}°</text>
       </svg>
-      <figcaption>Earth tilt ε</figcaption>
-    </figure>
-    <figure>
+    </VariableCard>
+    <VariableCard symbol="tₑ" title="Reference equinox" description="March 21, 12:00 UTC">
       <svg
         width="112"
         height="112"
@@ -119,22 +132,7 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
         <text x="120" y="85" text-anchor="end">1</text>
         <text x="8" y="108" font-size="10">21 Mar · 12:00 UTC</text>
       </svg>
-      <figcaption>Reference equinox tₑ</figcaption>
-    </figure>
-    <figure>
-      <svg
-        width="112"
-        height="112"
-        viewBox="0 0 128 128"
-        role="img"
-        aria-label="Playback speed v illustration"
-      >
-        <text x="12" y="30" font-size="11">1 real second</text>
-        <path d="M 12 54 H 112 L 104 48 M 112 54 L 104 60" fill="none" stroke="currentColor" />
-        <text x="12" y="84" font-size="11">{{ speed }} simulated s</text>
-      </svg>
-      <figcaption>Playback speed v</figcaption>
-    </figure>
+    </VariableCard>
   </div>
 </template>
 
@@ -143,5 +141,9 @@ const tiltArc = `M 64 38 A 26 26 0 0 1 ${64 + 26 * Math.sin(tiltRadians)} ${64 -
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+.diagrams > :deep(figure) {
+  flex: 0 1 24rem;
 }
 </style>

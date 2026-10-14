@@ -125,7 +125,6 @@ describe("solar UI", () => {
       "Start rotation θ₀ illustration",
       "Earth tilt ε illustration",
       "Reference equinox tₑ illustration",
-      "Playback speed v illustration",
     ]) {
       expect(page.getByRole("img", { name }).element()).toBeVisible();
     }
@@ -145,11 +144,17 @@ describe("solar UI", () => {
     await page.getByRole("spinbutton", { name: "Year position (t)" }).fill("0.75");
     await waitForDraw();
     expect(correction.querySelector("circle")!.getAttribute("cx")).not.toBe(before);
-    setRange("Playback speed (v)", 100);
-    await nextTick();
-    expect(
-      page.getByRole("img", { name: "Playback speed v illustration" }).element().textContent,
-    ).toContain("100 simulated s");
+
+    const cards = host.querySelectorAll('section[aria-label="Sun angle formula"] figure');
+    expect(cards).toHaveLength(9);
+    for (const card of cards) {
+      expect(card.querySelector("svg")).not.toBeNull();
+      expect(card.querySelector("figcaption")!.textContent).not.toBe("");
+      expect(card.querySelector("p")!.textContent).not.toBe("");
+      expect(main.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(host.querySelector('[aria-label="Playback speed v illustration"]')).toBeNull();
+    expect(host.textContent).not.toContain("Angle inputs use degrees");
   });
   it("syncs longitude controls and updates the curve while keeping the selected time and zoom", async () => {
     const number = page.getByRole("spinbutton", { name: "Degrees east (λ)" });

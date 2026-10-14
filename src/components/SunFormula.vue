@@ -2,7 +2,6 @@
 import ParameterDiagrams from "./ParameterDiagrams.vue";
 import { computed } from "vue";
 import SolarFunctionDiagrams from "./SolarFunctionDiagrams.vue";
-import { EARTH_TILT } from "../solar-position";
 import { daysInYear } from "../year-time";
 
 const props = defineProps<{
@@ -10,7 +9,6 @@ const props = defineProps<{
   longitude: number;
   timestamp: number;
   elevation: number;
-  speed: number;
 }>();
 const days = computed(() => daysInYear(new Date(props.timestamp).getFullYear()));
 </script>
@@ -58,25 +56,13 @@ const days = computed(() => daysInYear(new Date(props.timestamp).getFullYear()))
         </mrow>
       </math>
     </div>
-    <p>
-      φ: latitude. λ: longitude east. t: year position. δ: declination. H: daily rotation angle.
-    </p>
-    <p>
-      ε: Earth’s tilt ({{ EARTH_TILT }}°). tₑ: March 21 at 12:00 UTC as a year position. θ₀:
-      rotation at January 1, 00:00 local time, at zero longitude. Angle inputs use degrees; the
-      formulas use radians.
-    </p>
-    <p>
-      t = (selected date/time − start of year) / (start of next year − start of year). Playback
-      advances the selected date/time by v × elapsed time.
-    </p>
     <ParameterDiagrams
       :latitude="latitude"
       :longitude="longitude"
       :timestamp="timestamp"
       :elevation="elevation"
     />
-    <SolarFunctionDiagrams :timestamp="timestamp" :longitude="longitude" :speed="speed" />
+    <SolarFunctionDiagrams :timestamp="timestamp" :longitude="longitude" />
   </section>
 </template>
 

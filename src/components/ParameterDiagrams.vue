@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import VariableCard from "./VariableCard.vue";
 import { yearPosition } from "../year-time";
 
 const props = defineProps<{
@@ -27,7 +28,7 @@ const meridian = computed(() => point(props.longitude, 42));
 
 <template>
   <div class="diagrams">
-    <figure>
+    <VariableCard symbol="φ" title="Latitude" description="North or south of the equator">
       <svg
         width="112"
         height="112"
@@ -48,9 +49,12 @@ const meridian = computed(() => point(props.longitude, 42));
         <text x="79" :y="latitude < 0 ? 82 : 56">φ</text>
         <text x="60" y="14">N</text>
       </svg>
-      <figcaption>Latitude φ</figcaption>
-    </figure>
-    <figure>
+    </VariableCard>
+    <VariableCard
+      symbol="t"
+      title="Year position"
+      description="0: January 1 · 1: end of December 31"
+    >
       <svg
         width="112"
         height="112"
@@ -69,9 +73,8 @@ const meridian = computed(() => point(props.longitude, 42));
         <text x="8" y="103" font-size="10">Jan 1</text>
         <text x="120" y="103" font-size="10" text-anchor="end">Dec 31</text>
       </svg>
-      <figcaption>Year position t</figcaption>
-    </figure>
-    <figure>
+    </VariableCard>
+    <VariableCard symbol="λ" title="Longitude" description="East or west of Greenwich">
       <svg
         width="112"
         height="112"
@@ -87,9 +90,8 @@ const meridian = computed(() => point(props.longitude, 42));
         <text x="76" :y="longitude < 0 ? 82 : 56">λ</text>
         <text x="108" y="68" font-size="10">0°</text>
       </svg>
-      <figcaption>Longitude λ</figcaption>
-    </figure>
-    <figure>
+    </VariableCard>
+    <VariableCard symbol="α" title="Sun elevation" description="Angle above the horizon">
       <svg
         width="112"
         height="112"
@@ -104,8 +106,7 @@ const meridian = computed(() => point(props.longitude, 42));
         <text x="78" :y="elevation < 0 ? 82 : 56">α</text>
         <text x="12" y="59" font-size="10">Horizon</text>
       </svg>
-      <figcaption>Sun angle α</figcaption>
-    </figure>
+    </VariableCard>
   </div>
 </template>
 
@@ -114,5 +115,9 @@ const meridian = computed(() => point(props.longitude, 42));
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+.diagrams > :deep(figure) {
+  flex: 0 1 24rem;
 }
 </style>
