@@ -30,9 +30,14 @@ function scheduleLookup(lookup: (signal: AbortSignal) => Promise<void>): void {
   }, 500);
 }
 
-function search(event: Event): void {
+function editQuery(event: Event): void {
+  cancelLookup();
   query.value = (event.target as HTMLInputElement).value;
   results.value = [];
+  status.value = "";
+}
+
+function search(): void {
   const text = query.value.trim();
   if (text.length < 2) {
     cancelLookup();
@@ -82,10 +87,13 @@ onBeforeUnmount(cancelLookup);
 
 <template>
   <div>
-    <label>
-      Location name
-      <input type="search" :value="query" autocomplete="off" @input="search" />
-    </label>
+    <form @submit.prevent="search">
+      <label>
+        Location name
+        <input type="search" :value="query" autocomplete="off" @input="editQuery" />
+      </label>
+      <button type="submit">Search</button>
+    </form>
     <p role="status">{{ status }}</p>
     <ul v-if="results.length" aria-label="Location results">
       <li v-for="(location, index) in results" :key="index">

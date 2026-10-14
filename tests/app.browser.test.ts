@@ -10,6 +10,10 @@ let app: VueApp;
 let host: HTMLDivElement;
 
 beforeEach(async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(JSON.stringify({ features: [] }))),
+  );
   vi.setSystemTime(new Date("2026-06-21T12:00:00+02:00"));
   host = document.createElement("div");
   document.body.append(host);
@@ -22,7 +26,21 @@ afterEach(() => {
   app.unmount();
   host.remove();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
+
+function locationResponse(name: string, latitude: number, longitude: number): Response {
+  return new Response(
+    JSON.stringify({
+      features: [
+        {
+          geometry: { coordinates: [longitude, latitude] },
+          properties: { name, country: "Austria" },
+        },
+      ],
+    }),
+  );
+}
 
 function input(selector: string): HTMLInputElement {
   return host.querySelector<HTMLInputElement>(selector)!;
@@ -79,6 +97,85 @@ async function waitForDraw(): Promise<void> {
 }
 
 describe("solar UI", () => {
+  it("waits for Search and syncs the chosen place with coordinates and the chart", async () => {
+    const fetchMock = vi.fn(async () => locationResponse("Vienna", 48.2084, 16.3725));
+    vi.stubGlobal("fetch", fetchMock);
+    const before = plotPixels();
+    const search = page.getByRole("searchbox", { name: "Location name" });
+    await search.fill("vie");
+    await search.fill("vienna");
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(fetchMock).not.toHaveBeenCalled();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect
+      .element(page.getByRole("button", { name: "Vienna, Austria", exact: true }))
+      .toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await page.getByRole("button", { name: "Vienna, Austria", exact: true }).click();
+    await waitForDraw();
+    expect(input('input[type="search"]').value).toBe("Vienna, Austria");
+    expect(input('input[type="number"][min="-90"]').valueAsNumber).toBe(48.2084);
+    expect(input('input[type="number"][min="-180"]').valueAsNumber).toBe(16.3725);
+    expect(input('input[aria-label="Latitude (φ)"]').valueAsNumber).toBeCloseTo(48.2084, 4);
+    expect(input('input[aria-label="Longitude (λ)"]').valueAsNumber).toBeCloseTo(16.3725, 4);
+    expect(plotPixels()).not.toBe(before);
+  });
+
+  it("debounces coordinate changes and shows the nearby place without moving the point", async () => {
+    const fetchMock = vi.fn(async () => locationResponse("Graz", 47.07, 15.44));
+    vi.stubGlobal("fetch", fetchMock);
+    setRange("Latitude (φ)", 47.1);
+    setRange("Longitude (λ)", 15.5);
+    await nextTick();
+    expect(fetchMock).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(input('input[type="search"]').value).toBe("Graz, Austria"));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(input('input[type="number"][min="-90"]').valueAsNumber).toBe(47.1);
+    expect(input('input[type="number"][min="-180"]').valueAsNumber).toBe(15.5);
+  });
+
+  it("ignores stale location responses after the coordinates change", async () => {
+    let resolveSearch!: (response: Response) => void;
+    const pendingSearch = new Promise<Response>((resolve) => {
+      resolveSearch = resolve;
+    });
+    const fetchMock = vi.fn<typeof fetch>(async (url) =>
+      (url instanceof URL
+        ? url.pathname
+        : new URL(url instanceof Request ? url.url : url).pathname) === "/api/"
+        ? pendingSearch
+        : locationResponse("Graz", 47.07, 15.44),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await page.getByRole("searchbox", { name: "Location name" }).fill("vienna");
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await page.getByRole("spinbutton", { name: "Degrees north (φ)" }).fill("47.1");
+    resolveSearch(locationResponse("Vienna", 48.2084, 16.3725));
+    await vi.waitFor(() => expect(input('input[type="search"]').value).toBe("Graz, Austria"));
+    expect(host.querySelector('[aria-label="Location results"]')).toBeNull();
+    expect(input('input[type="number"][min="-90"]').valueAsNumber).toBe(47.1);
+  });
+
+  it("shows empty and unavailable search results while keeping coordinates usable", async () => {
+    const search = page.getByRole("searchbox", { name: "Location name" });
+    await search.fill("unknown");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect.element(page.getByRole("status")).toHaveTextContent("No locations found.");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("", { status: 503 })),
+    );
+    await search.fill("vienna");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect
+      .element(page.getByRole("status"))
+      .toHaveTextContent("Location lookup unavailable. Try again.");
+    await page.getByRole("spinbutton", { name: "Degrees north (φ)" }).fill("0");
+    await waitForDraw();
+    expect(input('input[aria-label="Latitude (φ)"]').valueAsNumber).toBe(0);
+  });
+
   it("shows 365 or 366 daily rotations as the selected year changes", async () => {
     const equation = () => host.querySelector('math[aria-label="Solar hour angle equation"]')!;
     expect(equation().textContent).toContain("365");
