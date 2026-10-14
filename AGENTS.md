@@ -50,6 +50,13 @@ release. Add a tool name to select part of the graph. For example, run
 - Commit automatically after each small, atomic set of changes.
 - Commit throughout feature development; do not wait until the whole feature is done.
 - Run broader validation, including `vp check`, `vp test`, and any relevant project scripts, when a feature is complete. It is not required after every intermediate commit.
+- Push only when explicitly asked. Otherwise, the user pushes manually.
+- Verify GitHub Actions workflows or deployed sites only when explicitly asked.
+
+## Testing
+
+- Use explicit timestamps or timezones in time-sensitive tests. Tests must also work in UTC CI.
+- Mock external APIs in automated tests. Cover failures and stale responses.
 
 ## Human-facing language
 
