@@ -25,3 +25,23 @@ release. Add a tool name to select part of the graph. For example, run
 - [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
+
+## Coding conventions
+
+- Prefer simple code over complicated code.
+- Prioritize readability and use clear, descriptive variable names.
+- Follow existing project patterns and Vite+ conventions.
+- Keep changesets small and focused.
+
+## Commit conventions
+
+- Use Conventional Commits, such as `feat:`, `fix:`, `docs:`, and `chore:`.
+- Keep commit subjects short and clear.
+- Commit automatically after each small, atomic set of changes.
+- Commit throughout feature development; do not wait until the whole feature is done.
+- Run broader validation, including `vp check`, `vp test`, and any relevant project scripts, when a feature is complete. It is not required after every intermediate commit.
+
+## Human-facing language
+
+- Use simple, short, concise language in all human-facing text, including UI text, documentation, comments, and commit messages.
+- Bullet points are encouraged, but not required.
