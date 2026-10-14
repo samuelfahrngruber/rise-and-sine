@@ -8,6 +8,7 @@ const RADIANS = Math.PI / 180;
 
 interface SolarBasis {
   declination: number;
+  hourAngle: number;
   sinDeclination: number;
   cosDeclinationHourAngle: number;
 }
@@ -49,9 +50,14 @@ function solarBasis(timestamp: number, longitude: number): SolarBasis {
   const hourAngle = (solarMinutes / 4 - 180) * RADIANS;
   return {
     declination: declination / RADIANS,
+    hourAngle,
     sinDeclination: Math.sin(declination),
     cosDeclinationHourAngle: Math.cos(declination) * Math.cos(hourAngle),
   };
+}
+
+export function sunHourAngle(timestamp: number, longitude = VIENNA_LONGITUDE): number {
+  return solarBasis(timestamp, longitude).hourAngle / RADIANS;
 }
 
 function elevation(basis: SolarBasis, sinLatitude: number, cosLatitude: number): number {
@@ -71,10 +77,17 @@ export function sunElevation(
   );
 }
 
-export function sampleSolarYear(year: number, longitude = VIENNA_LONGITUDE): SolarYear {
+export function sampleSolarYear(
+  year: number,
+  longitude = VIENNA_LONGITUDE,
+  extraMinutes = 0,
+): SolarYear {
   const { start, end } = yearBounds(year);
-  const intervals = Math.ceil((end - start) / (30 * 60_000));
-  const x = Array.from({ length: intervals + 1 }, (_, index) => index / intervals);
+  const minutes = (end - start) / 60_000;
+  const x = Array.from(
+    { length: minutes + 2 * extraMinutes + 1 },
+    (_, index) => (index - extraMinutes) / minutes,
+  );
   return {
     x,
     positions: x.map((position) => solarBasis(start + position * (end - start), longitude)),

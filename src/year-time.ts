@@ -7,14 +7,29 @@ export function yearBounds(year: number): { start: number; end: number } {
   return { start: start.getTime(), end: end.getTime() };
 }
 
-export function yearPosition(timestamp: number): number {
-  const { start, end } = yearBounds(new Date(timestamp).getFullYear());
+export function yearPosition(timestamp: number, year = new Date(timestamp).getFullYear()): number {
+  const { start, end } = yearBounds(year);
   return (timestamp - start) / (end - start);
 }
 
-export function timestampAtPosition(position: number, year: number): number {
+export function dayZoomRange(timestamp: number): [number, number] {
+  const start = new Date(timestamp);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const year = start.getFullYear();
+  return [yearPosition(start.getTime(), year), yearPosition(end.getTime(), year)];
+}
+
+export function nextTwoHoursZoomRange(timestamp: number): [number, number] {
+  const year = new Date(timestamp).getFullYear();
+  return [yearPosition(timestamp, year), yearPosition(timestamp + 2 * 60 * 60_000, year)];
+}
+
+export function timestampAtPosition(position: number, year: number, clamp = true): number {
   const { start, end } = yearBounds(year);
-  return Math.round(start + Math.max(0, Math.min(1, position)) * (end - start));
+  const selected = clamp ? Math.max(0, Math.min(1, position)) : position;
+  return Math.round(start + selected * (end - start));
 }
 
 export function toDateTimeInput(timestamp: number): string {

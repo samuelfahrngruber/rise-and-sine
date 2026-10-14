@@ -5,9 +5,26 @@ import {
   toDateTimeInput,
   yearBounds,
   yearPosition,
+  dayZoomRange,
+  nextTwoHoursZoomRange,
 } from "./year-time";
 
 describe("year and timestamp contract", () => {
+  it("zooms to local midnight through the next local midnight", () => {
+    const timestamp = new Date(2026, 2, 29, 12).getTime();
+    const [start, end] = dayZoomRange(timestamp);
+    expect(toDateTimeInput(timestampAtPosition(start, 2026))).toBe("2026-03-29T00:00:00");
+    expect(toDateTimeInput(timestampAtPosition(end, 2026))).toBe("2026-03-30T00:00:00");
+  });
+
+  it("keeps a two-hour window across New Year", () => {
+    const timestamp = new Date(2026, 11, 31, 23).getTime();
+    const [start, end] = nextTwoHoursZoomRange(timestamp);
+    const bounds = yearBounds(2026);
+    expect((end - start) * (bounds.end - bounds.start)).toBeCloseTo(2 * 60 * 60_000, 3);
+    expect(start).toBeLessThan(1);
+    expect(end).toBeGreaterThan(1);
+  });
   it("starts at local January 1 and ends at the next January 1", () => {
     const { start, end } = yearBounds(2026);
     expect(toDateTimeInput(start)).toBe("2026-01-01T00:00:00");
