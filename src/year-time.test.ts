@@ -5,11 +5,20 @@ import {
   toDateTimeInput,
   yearBounds,
   yearPosition,
+  daysInYear,
   dayZoomRange,
   nextTwoHoursZoomRange,
 } from "./year-time";
 
 describe("year and timestamp contract", () => {
+  it.each([
+    [2026, 365],
+    [2024, 366],
+    [1900, 365],
+    [2000, 366],
+  ])("uses the calendar day count for %s", (year, days) => {
+    expect(daysInYear(year!)).toBe(days);
+  });
   it("zooms to local midnight through the next local midnight", () => {
     const timestamp = new Date(2026, 2, 29, 12).getTime();
     const [start, end] = dayZoomRange(timestamp);

@@ -45,6 +45,11 @@ export function solarTime(timestamp: number): { minutes: number } {
   };
 }
 
+// Rotation at local January 1, at zero longitude, in radians.
+export function initialRotation(year: number): number {
+  return (solarTime(yearBounds(year).start).minutes * Math.PI) / 720 - Math.PI;
+}
+
 function seasonalDeclination(timestamp: number, season: SolarSeason): number {
   return (
     EARTH_TILT *

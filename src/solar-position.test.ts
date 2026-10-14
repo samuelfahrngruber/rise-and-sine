@@ -6,12 +6,27 @@ import {
   sunHourAngle,
   sunDeclination,
   solarTime,
+  initialRotation,
   EARTH_TILT,
   VIENNA_LATITUDE,
 } from "./solar-position";
 import { validatePlotData } from "./plot-data";
+import { daysInYear, yearPosition } from "./year-time";
 
 describe("sun elevation contract", () => {
+  it.each([
+    Date.UTC(2024, 1, 29, 13, 30),
+    Date.UTC(2026, 2, 29, 12),
+    Date.UTC(2026, 5, 21, 11),
+    Date.UTC(2026, 9, 25, 12),
+  ])("keeps the same daily rotation with continuous year position at %s", (timestamp) => {
+    const year = new Date(timestamp).getFullYear();
+    const angle =
+      2 * Math.PI * daysInYear(year) * yearPosition(timestamp) +
+      (16.3738 * Math.PI) / 180 +
+      initialRotation(year);
+    expect(Math.cos(angle)).toBeCloseTo(Math.cos((sunHourAngle(timestamp) * Math.PI) / 180), 10);
+  });
   it("defines UTC minutes including seconds", () => {
     expect(solarTime(Date.UTC(2026, 5, 21, 12, 30)).minutes).toBe(750);
     expect(solarTime(Date.UTC(2026, 5, 21, 0, 0, 30)).minutes).toBe(0.5);

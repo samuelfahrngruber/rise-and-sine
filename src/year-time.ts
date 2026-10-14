@@ -1,3 +1,7 @@
+export function daysInYear(year: number): number {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 366 : 365;
+}
+
 export function yearBounds(year: number): { start: number; end: number } {
   const start = new Date(0);
   start.setFullYear(year, 0, 1);
