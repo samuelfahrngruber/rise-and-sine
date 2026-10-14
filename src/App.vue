@@ -127,15 +127,7 @@ function formatX(position: number): string {
     <SunFormula :latitude="latitude" :timestamp="timestamp" :elevation="selectedElevation" />
     <LatitudeControls v-model="latitude" />
     <TimestampControls v-model="timestamp" v-model:playing="playing" v-model:speed="speed" />
-    <p>Longitude (λ): {{ VIENNA_LONGITUDE }}° E (Vienna). Altitude: sea level.</p>
-    <p>
-      <output
-        >Sun angle: {{ selectedElevation.toFixed(2) }}° · Year position:
-        {{ selectedPosition.toFixed(6) }}</output
-      >
-    </p>
     <figure>
-      <figcaption>Sun elevation in {{ year }}</figcaption>
       <PlotZoomControls
         @reset="xRange = [0, 1]"
         @today="zoomToToday"
