@@ -5,13 +5,35 @@ import "uplot/dist/uPlot.min.css";
 import { validatePlotData, type PlotData, type PlotMarker, type PlotSeries } from "../plot-data";
 
 const props = withDefaults(
-  defineProps<{ data: PlotData; markers?: PlotMarker[]; showLegend?: boolean }>(),
-  { markers: () => [], showLegend: false },
+  defineProps<{
+    data: PlotData;
+    markers?: PlotMarker[];
+    showLegend?: boolean;
+    xLabel?: string;
+    yLabel?: string;
+    yRange?: [number, number];
+  }>(),
+  { markers: () => [], showLegend: false, xLabel: "x", yLabel: "y" },
 );
+const emit = defineEmits<{ selectX: [value: number] }>();
 const container = useTemplateRef<HTMLDivElement>("container");
 let plot: uPlot | undefined;
 let resizeObserver: ResizeObserver | undefined;
 const colors = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd"];
+let pointerStart: { x: number; y: number } | undefined;
+
+function recordPointer(event: PointerEvent): void {
+  pointerStart = { x: event.clientX, y: event.clientY };
+}
+
+function selectPosition(event: MouseEvent): void {
+  if (!plot || !pointerStart || event.button !== 0 || event.detail > 1) return;
+  if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) return;
+  const bounds = plot.over.getBoundingClientRect();
+  const position = event.clientX - bounds.left;
+  if (position < 0 || position > bounds.width) return;
+  emit("selectX", plot.posToVal(position, "x"));
+}
 
 function seriesOptions(series: PlotSeries, index: number): uPlot.Series {
   return {
@@ -47,6 +69,21 @@ function drawMarkers(chart: uPlot): void {
       ctx.lineTo(bbox.left + bbox.width, position);
     }
     ctx.stroke();
+    if (marker.label) {
+      ctx.font = `${12 * pixelRatio}px sans-serif`;
+      ctx.fillStyle = marker.color ?? "#666";
+      const labelFitsRight =
+        position + ctx.measureText(marker.label).width + 4 * pixelRatio < bbox.left + bbox.width;
+      ctx.textAlign = vertical && labelFitsRight ? "left" : "right";
+      ctx.textBaseline = vertical ? "top" : "bottom";
+      ctx.fillText(
+        marker.label,
+        vertical
+          ? position + (labelFitsRight ? 4 : -4) * pixelRatio
+          : bbox.left + bbox.width - 4 * pixelRatio,
+        vertical ? bbox.top + 4 * pixelRatio : position - 4 * pixelRatio,
+      );
+    }
   }
 
   ctx.restore();
@@ -60,16 +97,19 @@ onMounted(() => {
     {
       width: element.clientWidth,
       height: 320,
-      scales: { x: { time: false } },
+      scales: { x: { time: false }, y: { range: props.yRange } },
       series: [{ label: "x" }, ...props.data.series.map(seriesOptions)],
-      axes: [{ label: "x" }, { label: "y" }],
+      axes: [{ label: props.xLabel }, { label: props.yLabel }],
       legend: { show: true },
-      cursor: { drag: { x: true, y: false } },
+      cursor: { y: false, drag: { x: true, y: false, dist: 5 } },
       hooks: { draw: [drawMarkers] },
     },
     [props.data.x, ...props.data.series.map((series) => series.values)],
     element,
   );
+
+  plot.over.addEventListener("pointerdown", recordPointer);
+  plot.over.addEventListener("click", selectPosition, true);
 
   resizeObserver = new ResizeObserver(() => {
     plot?.setSize({ width: element.clientWidth, height: 320 });
@@ -115,6 +155,8 @@ watch(
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect();
+  plot?.over.removeEventListener("pointerdown", recordPointer);
+  plot?.over.removeEventListener("click", selectPosition, true);
   plot?.destroy();
 });
 </script>

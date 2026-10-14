@@ -14,6 +14,7 @@ export interface PlotMarker {
   orientation: "vertical" | "horizontal";
   value: number;
   color?: string;
+  label?: string;
 }
 
 export function validatePlotData(data: PlotData): void {
