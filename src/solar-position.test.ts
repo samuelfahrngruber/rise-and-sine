@@ -48,9 +48,8 @@ describe("sun elevation contract", () => {
     const east = solarYearPlot(samples, VIENNA_LATITUDE, 90);
     const west = solarYearPlot(samples, VIENNA_LATITUDE, -90);
     const start = new Date(2026, 0, 1).getTime();
-    const end = new Date(2027, 0, 1).getTime();
-    const index = 172 * 1440 + 12 * 60;
-    const timestamp = start + samples.x[index]! * (end - start);
+    const timestamp = Date.UTC(2026, 5, 21, 9);
+    const index = (timestamp - start) / 60_000;
     expect(east.series[0]!.values[index]).toBeCloseTo(
       sunElevation(timestamp, VIENNA_LATITUDE, 90),
       8,
