@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { page, userEvent } from "vite-plus/test/browser";
 import { createApp, nextTick, type App as VueApp } from "vue";
 import App from "../src/App.vue";
+import AccuratePage from "../src/AccuratePage.vue";
 import "../src/style.css";
 
 let app: VueApp;
@@ -78,14 +79,24 @@ async function waitForDraw(): Promise<void> {
 }
 
 describe("solar UI", () => {
+  it("leaves accurate mode as future instructions without controls or a chart", async () => {
+    app.unmount();
+    app = createApp(AccuratePage);
+    app.mount(host);
+    await nextTick();
+    expect(page.getByRole("heading", { name: "Accurate mode" }).element()).toBeVisible();
+    expect(page.getByText("Add observer altitude.").element()).toBeVisible();
+    expect(page.getByRole("link", { name: "Back to approximate mode" }).element()).toHaveAttribute(
+      "href",
+      "/",
+    );
+    expect(host.querySelector("canvas")).toBeNull();
+    expect(host.querySelector("input")).toBeNull();
+  });
+
   it("defines the solar functions beneath the main equation and illustrates every symbol", async () => {
     const main = host.querySelector("math")!;
-    for (const label of [
-      "Solar declination equation",
-      "Solar hour angle equation",
-      "Equation of time definition",
-      "Year phase equation",
-    ]) {
+    for (const label of ["Solar declination equation", "Solar hour angle equation"]) {
       const equation = host.querySelector(`math[aria-label="${label}"]`)!;
       expect(equation).not.toBeNull();
       expect(
@@ -99,21 +110,24 @@ describe("solar UI", () => {
       "Sun angle α illustration",
       "Solar declination δ(t) illustration",
       "Solar hour angle H(λ, t) illustration",
-      "Equation of time E(t) illustration",
-      "Year phase γ(t) illustration",
       "UTC minutes m(t) illustration",
-      "Elapsed days u(t) illustration",
-      "Days in year D illustration",
+      "Earth tilt ε illustration",
+      "Reference equinox tₑ illustration",
       "Playback speed v illustration",
     ]) {
       expect(page.getByRole("img", { name }).element()).toBeVisible();
     }
-    expect(page.getByRole("link", { name: "equation of time" }).element()).toHaveAttribute(
-      "href",
-      "https://en.wikipedia.org/wiki/Equation_of_time",
+    const accurate = page.getByRole("link", { name: "Accurate", exact: true });
+    expect(accurate.element()).toHaveAttribute("href", "/accurate/");
+    expect(accurate.element().closest("header")).toBe(
+      page.getByRole("heading", { name: "Rise and Sine" }).element().closest("header"),
     );
+    expect(host.querySelector('math[aria-label="Equation of time definition"]')).toBeNull();
+    expect(
+      host.querySelector('math[aria-label="Solar declination equation"]')!.textContent,
+    ).toContain("ε");
     const correction = page
-      .getByRole("img", { name: "Equation of time E(t) illustration" })
+      .getByRole("img", { name: "Solar declination δ(t) illustration" })
       .element();
     const before = correction.querySelector("circle")!.getAttribute("cx");
     await page.getByRole("spinbutton", { name: "Year position (t)" }).fill("0.75");

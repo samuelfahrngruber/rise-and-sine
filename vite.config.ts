@@ -4,6 +4,11 @@ import { playwright } from "vite-plus/test/browser-playwright";
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rolldownOptions: {
+      input: { main: "index.html", accurate: "accurate/index.html" },
+    },
+  },
   test: {
     projects: [
       { extends: true, test: { name: "unit", include: ["src/**/*.test.ts"] } },

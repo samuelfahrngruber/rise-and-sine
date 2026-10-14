@@ -126,7 +126,11 @@ function formatX(position: number): string {
 
 <template>
   <main>
-    <h1>Rise and Sine</h1>
+    <header>
+      <h1>Rise and Sine</h1>
+      <span>Approximate</span>
+      <a href="/accurate/">Accurate</a>
+    </header>
     <SunFormula
       :latitude="latitude"
       :longitude="longitude"

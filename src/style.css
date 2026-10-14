@@ -2,6 +2,13 @@ body {
   margin: 0;
 }
 
+header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 figure {
   margin: 0;
 }
