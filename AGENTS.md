@@ -34,6 +34,7 @@ release. Add a tool name to select part of the graph. For example, run
 - Define clear interfaces and contracts between components.
 - Test those contracts and observable behavior, not implementation details.
 - Follow existing project patterns and Vite+ conventions.
+- Use `jq` to parse JSON instead of writing Python scripts.
 - Keep changesets small and focused.
 
 ## Styling
