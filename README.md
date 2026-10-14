@@ -17,3 +17,12 @@ To build and preview the app:
 vp run build
 vp run preview
 ```
+
+## Tests
+
+Install the test browser once, then run the tests:
+
+```sh
+vp exec playwright install chromium
+vp test
+```
