@@ -8,9 +8,30 @@ import {
   daysInYear,
   dayZoomRange,
   nextTwoHoursZoomRange,
+  nextTenMinutesZoomRange,
+  monthZoomRange,
+  weekZoomRange,
 } from "./year-time";
 
 describe("year and timestamp contract", () => {
+  it("zooms to the selected calendar month, including leap days", () => {
+    const [start, end] = monthZoomRange(new Date(2024, 1, 20, 12).getTime());
+    expect(toDateTimeInput(timestampAtPosition(start, 2024))).toBe("2024-02-01T00:00:00");
+    expect(toDateTimeInput(timestampAtPosition(end, 2024))).toBe("2024-03-01T00:00:00");
+  });
+
+  it("zooms to Monday through Monday across New Year", () => {
+    const [start, end] = weekZoomRange(new Date(2026, 0, 2, 12).getTime());
+    expect(toDateTimeInput(timestampAtPosition(start, 2026, false))).toBe("2025-12-29T00:00:00");
+    expect(toDateTimeInput(timestampAtPosition(end, 2026, false))).toBe("2026-01-05T00:00:00");
+  });
+
+  it("keeps a ten-minute window across New Year", () => {
+    const timestamp = new Date(2026, 11, 31, 23, 55).getTime();
+    const [start, end] = nextTenMinutesZoomRange(timestamp);
+    expect(timestampAtPosition(start, 2026, false)).toBe(timestamp);
+    expect(timestampAtPosition(end, 2026, false)).toBe(timestamp + 10 * 60_000);
+  });
   it.each([
     [2026, 365],
     [2024, 366],

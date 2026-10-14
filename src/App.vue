@@ -16,6 +16,9 @@ import {
 import { seasonMarkers } from "./solar-markers";
 import {
   dayZoomRange,
+  monthZoomRange,
+  weekZoomRange,
+  nextTenMinutesZoomRange,
   nextTwoHoursZoomRange,
   timestampAtPosition,
   yearPosition,
@@ -54,7 +57,7 @@ watch(year, () => {
   if (window && (timestamp.value < window[0] || timestamp.value > window[1]))
     visibleWindow.value = undefined;
 });
-const samples = computed(() => sampleSolarYear(year.value, 0, 120));
+const samples = computed(() => sampleSolarYear(year.value, 7 * 1440, 7 * 1440));
 const xIncrements = computed(() => {
   const { start, end } = yearBounds(year.value);
   return [
@@ -141,9 +144,12 @@ function formatX(position: number): string {
     <TimestampControls v-model="timestamp" v-model:playing="playing" v-model:speed="speed" />
     <figure>
       <PlotZoomControls
-        @reset="xRange = [0, 1]"
+        @year="xRange = [0, 1]"
+        @month="xRange = monthZoomRange(timestamp)"
+        @week="xRange = weekZoomRange(timestamp)"
         @today="zoomToToday"
         @next-two-hours="xRange = nextTwoHoursZoomRange(timestamp)"
+        @next-ten-minutes="xRange = nextTenMinutesZoomRange(timestamp)"
       />
       <label><input v-model="showLegend" type="checkbox" /> Show legend</label>
       <FunctionPlot

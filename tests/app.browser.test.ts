@@ -225,6 +225,28 @@ describe("solar UI", () => {
     expect(page.getByRole("slider", { name: "Playback speed (v)" }).element()).toBeVisible();
   });
 
+  it("zooms to the selected month, week, and next ten minutes", async () => {
+    const clickMiddle = async () => {
+      await waitForDraw();
+      const overlay = plotOverlay();
+      const { width, height } = overlay.getBoundingClientRect();
+      await page.elementLocator(overlay).click({ position: { x: width / 2, y: height / 2 } });
+      await waitForDraw();
+      return new Date(input('input[type="datetime-local"]').value).getTime();
+    };
+    await page.getByRole("button", { name: "Zoom to month", exact: true }).click();
+    expect(
+      Math.abs((await clickMiddle()) - new Date("2026-06-16T00:00:00+02:00").getTime()),
+    ).toBeLessThan(60 * 60_000);
+    await page.getByRole("button", { name: "Zoom to week", exact: true }).click();
+    const middle = await clickMiddle();
+    expect(Math.abs(middle - new Date("2026-06-18T12:00:00+02:00").getTime())).toBeLessThan(
+      20 * 60_000,
+    );
+    await page.getByRole("button", { name: "Zoom to next 10 minutes", exact: true }).click();
+    expect(Math.abs((await clickMiddle()) - middle - 5 * 60_000)).toBeLessThan(5_000);
+  });
+
   it("zooms to today, the next two hours, and back to the full year", async () => {
     await page.getByLabelText("Local time (t, Europe/Vienna)").fill("2024-12-21T23:00");
     await page.getByRole("button", { name: "Zoom to today", exact: true }).click();
@@ -248,7 +270,7 @@ describe("solar UI", () => {
     expect(Math.abs(later - midday - 60 * 60_000)).toBeLessThan(15_000);
 
     const selected = input('input[type="datetime-local"]').value;
-    await page.getByRole("button", { name: "Reset zoom", exact: true }).click();
+    await page.getByRole("button", { name: "Zoom to year", exact: true }).click();
     await waitForDraw();
     expect(input('input[type="datetime-local"]').value).toBe(selected);
     await clickMiddle();

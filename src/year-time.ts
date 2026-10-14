@@ -26,8 +26,36 @@ export function dayZoomRange(timestamp: number): [number, number] {
 }
 
 export function nextTwoHoursZoomRange(timestamp: number): [number, number] {
+  return nextMinutesZoomRange(timestamp, 120);
+}
+
+export function nextTenMinutesZoomRange(timestamp: number): [number, number] {
+  return nextMinutesZoomRange(timestamp, 10);
+}
+
+function nextMinutesZoomRange(timestamp: number, minutes: number): [number, number] {
   const year = new Date(timestamp).getFullYear();
-  return [yearPosition(timestamp, year), yearPosition(timestamp + 2 * 60 * 60_000, year)];
+  return [yearPosition(timestamp, year), yearPosition(timestamp + minutes * 60_000, year)];
+}
+
+export function monthZoomRange(timestamp: number): [number, number] {
+  const start = new Date(timestamp);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  const year = start.getFullYear();
+  return [yearPosition(start.getTime(), year), yearPosition(end.getTime(), year)];
+}
+
+export function weekZoomRange(timestamp: number): [number, number] {
+  const start = new Date(timestamp);
+  const year = start.getFullYear();
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return [yearPosition(start.getTime(), year), yearPosition(end.getTime(), year)];
 }
 
 export function timestampAtPosition(position: number, year: number, clamp = true): number {
