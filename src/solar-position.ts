@@ -20,14 +20,48 @@ export interface SolarYear {
   positions: SolarBasis[];
 }
 
-// NOAA's approximate geometric solar position; no atmospheric refraction.
-// https://gml.noaa.gov/grad/solcalc/solareqns.PDF
-function solarBasis(timestamp: number, longitude: number): SolarBasis {
+export function solarTime(timestamp: number): {
+  days: number;
+  elapsedDays: number;
+  minutes: number;
+  phase: number;
+} {
   const date = new Date(timestamp);
   const year = date.getUTCFullYear();
   const start = Date.UTC(year, 0, 1);
   const days = (Date.UTC(year + 1, 0, 1) - start) / DAY;
-  const gamma = (2 * Math.PI * ((timestamp - start) / DAY - 0.5)) / days;
+  const elapsedDays = (timestamp - start) / DAY;
+  const minutes =
+    date.getUTCHours() * 60 +
+    date.getUTCMinutes() +
+    date.getUTCSeconds() / 60 +
+    date.getUTCMilliseconds() / 60_000;
+  return { days, elapsedDays, minutes, phase: (2 * Math.PI * (elapsedDays - 0.5)) / days };
+}
+
+function equationAtPhase(gamma: number): number {
+  return (
+    229.18 *
+    (0.000075 +
+      0.001868 * Math.cos(gamma) -
+      0.032077 * Math.sin(gamma) -
+      0.014615 * Math.cos(2 * gamma) -
+      0.040849 * Math.sin(2 * gamma))
+  );
+}
+
+export function solarEquationOfTime(timestamp: number): number {
+  return equationAtPhase(solarTime(timestamp).phase);
+}
+
+export function sunDeclination(timestamp: number): number {
+  return solarBasis(timestamp, 0).declination;
+}
+
+// NOAA's approximate geometric solar position; no atmospheric refraction.
+// https://gml.noaa.gov/grad/solcalc/solareqns.PDF
+function solarBasis(timestamp: number, longitude: number): SolarBasis {
+  const { phase: gamma, minutes } = solarTime(timestamp);
   const declination =
     0.006918 -
     0.399912 * Math.cos(gamma) +
@@ -36,19 +70,7 @@ function solarBasis(timestamp: number, longitude: number): SolarBasis {
     0.000907 * Math.sin(2 * gamma) -
     0.002697 * Math.cos(3 * gamma) +
     0.00148 * Math.sin(3 * gamma);
-  const equationOfTime =
-    229.18 *
-    (0.000075 +
-      0.001868 * Math.cos(gamma) -
-      0.032077 * Math.sin(gamma) -
-      0.014615 * Math.cos(2 * gamma) -
-      0.040849 * Math.sin(2 * gamma));
-  const utcMinutes =
-    date.getUTCHours() * 60 +
-    date.getUTCMinutes() +
-    date.getUTCSeconds() / 60 +
-    date.getUTCMilliseconds() / 60_000;
-  const solarMinutes = (((utcMinutes + equationOfTime + 4 * longitude) % 1440) + 1440) % 1440;
+  const solarMinutes = (((minutes + equationAtPhase(gamma) + 4 * longitude) % 1440) + 1440) % 1440;
   const hourAngle = (solarMinutes / 4 - 180) * RADIANS;
   return {
     declination: declination / RADIANS,

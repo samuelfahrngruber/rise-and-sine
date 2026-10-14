@@ -4,11 +4,32 @@ import {
   solarYearPlot,
   sunElevation,
   sunHourAngle,
+  sunDeclination,
+  solarEquationOfTime,
+  solarTime,
   VIENNA_LATITUDE,
 } from "./solar-position";
 import { validatePlotData } from "./plot-data";
 
 describe("sun elevation contract", () => {
+  it("defines UTC year phase and minutes, including leap years", () => {
+    const time = solarTime(Date.UTC(2024, 0, 1));
+    expect(time.days).toBe(366);
+    expect(time.elapsedDays).toBe(0);
+    expect(time.minutes).toBe(0);
+    expect(time.phase).toBeCloseTo(-Math.PI / 366);
+    expect(solarTime(Date.UTC(2026, 5, 21, 12, 30)).minutes).toBe(750);
+  });
+
+  it("exposes the seasonal declination in degrees", () => {
+    expect(sunDeclination(Date.UTC(2026, 5, 21, 12))).toBeGreaterThan(23);
+    expect(sunDeclination(Date.UTC(2026, 11, 21, 12))).toBeLessThan(-23);
+  });
+
+  it("exposes the equation of time in minutes", () => {
+    expect(solarEquationOfTime(Date.UTC(2026, 1, 11, 12))).toBeLessThan(-13);
+    expect(solarEquationOfTime(Date.UTC(2026, 9, 31, 12))).toBeGreaterThan(15);
+  });
   it("applies a new longitude to cached yearly samples", () => {
     const samples = sampleSolarYear(2026, 0);
     const east = solarYearPlot(samples, VIENNA_LATITUDE, 90);
