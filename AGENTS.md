@@ -33,6 +33,12 @@ release. Add a tool name to select part of the graph. For example, run
 - Follow existing project patterns and Vite+ conventions.
 - Keep changesets small and focused.
 
+## Styling
+
+- Make the first iteration work with plain HTML and little to no styling.
+- Use CSS only for small layout adjustments at first.
+- Leave visual polish for a later iteration.
+
 ## Commit conventions
 
 - Use Conventional Commits, such as `feat:`, `fix:`, `docs:`, and `chore:`.
