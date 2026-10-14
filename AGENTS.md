@@ -30,6 +30,9 @@ release. Add a tool name to select part of the graph. For example, run
 
 - Prefer simple code over complicated code.
 - Prioritize readability and use clear, descriptive variable names.
+- Treat separation of concerns as a core design rule. Use dedicated components whenever it makes sense, and give each a clear responsibility.
+- Define clear interfaces and contracts between components.
+- Test those contracts and observable behavior, not implementation details.
 - Follow existing project patterns and Vite+ conventions.
 - Keep changesets small and focused.
 
