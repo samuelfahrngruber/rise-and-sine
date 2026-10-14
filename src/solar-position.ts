@@ -1,9 +1,9 @@
 import type { PlotData } from "./plot-data";
-import { yearBounds } from "./year-time";
+import { yearBounds, yearPosition } from "./year-time";
 
 export const VIENNA_LATITUDE = 48.2082;
 export const VIENNA_LONGITUDE = 16.3738;
-const DAY = 86_400_000;
+export const EARTH_TILT = 23.44;
 const RADIANS = Math.PI / 180;
 
 interface SolarBasis {
@@ -20,58 +20,56 @@ export interface SolarYear {
   positions: SolarBasis[];
 }
 
-export function solarTime(timestamp: number): {
-  days: number;
-  elapsedDays: number;
-  minutes: number;
-  phase: number;
-} {
-  const date = new Date(timestamp);
-  const year = date.getUTCFullYear();
-  const start = Date.UTC(year, 0, 1);
-  const days = (Date.UTC(year + 1, 0, 1) - start) / DAY;
-  const elapsedDays = (timestamp - start) / DAY;
-  const minutes =
-    date.getUTCHours() * 60 +
-    date.getUTCMinutes() +
-    date.getUTCSeconds() / 60 +
-    date.getUTCMilliseconds() / 60_000;
-  return { days, elapsedDays, minutes, phase: (2 * Math.PI * (elapsedDays - 0.5)) / days };
+interface SolarSeason {
+  start: number;
+  end: number;
+  equinox: number;
 }
 
-function equationAtPhase(gamma: number): number {
+function solarSeason(year: number): SolarSeason {
+  return { ...yearBounds(year), equinox: Date.UTC(year, 2, 21, 12) };
+}
+
+export function equinoxPosition(year: number): number {
+  return yearPosition(Date.UTC(year, 2, 21, 12), year);
+}
+
+export function solarTime(timestamp: number): { minutes: number } {
+  const date = new Date(timestamp);
+  return {
+    minutes:
+      date.getUTCHours() * 60 +
+      date.getUTCMinutes() +
+      date.getUTCSeconds() / 60 +
+      date.getUTCMilliseconds() / 60_000,
+  };
+}
+
+function seasonalDeclination(timestamp: number, season: SolarSeason): number {
   return (
-    229.18 *
-    (0.000075 +
-      0.001868 * Math.cos(gamma) -
-      0.032077 * Math.sin(gamma) -
-      0.014615 * Math.cos(2 * gamma) -
-      0.040849 * Math.sin(2 * gamma))
+    EARTH_TILT *
+    Math.sin((2 * Math.PI * (timestamp - season.equinox)) / (season.end - season.start))
   );
 }
 
-export function solarEquationOfTime(timestamp: number): number {
-  return equationAtPhase(solarTime(timestamp).phase);
-}
-
 export function sunDeclination(timestamp: number): number {
-  return solarBasis(timestamp, 0).declination;
+  return seasonalDeclination(timestamp, solarSeason(new Date(timestamp).getFullYear()));
 }
 
-// NOAA's approximate geometric solar position; no atmospheric refraction.
-// https://gml.noaa.gov/grad/solcalc/solareqns.PDF
-function solarBasis(timestamp: number, longitude: number): SolarBasis {
-  const { phase: gamma, minutes } = solarTime(timestamp);
-  const declination =
-    0.006918 -
-    0.399912 * Math.cos(gamma) +
-    0.070257 * Math.sin(gamma) -
-    0.006758 * Math.cos(2 * gamma) +
-    0.000907 * Math.sin(2 * gamma) -
-    0.002697 * Math.cos(3 * gamma) +
-    0.00148 * Math.sin(3 * gamma);
-  const solarMinutes = (((minutes + equationAtPhase(gamma) + 4 * longitude) % 1440) + 1440) % 1440;
-  const hourAngle = (solarMinutes / 4 - 180) * RADIANS;
+export function sunHourAngle(timestamp: number, longitude = VIENNA_LONGITUDE): number {
+  const minutes = solarTime(timestamp).minutes;
+  const solarMinutes = (((minutes + 4 * longitude) % 1440) + 1440) % 1440;
+  return solarMinutes / 4 - 180;
+}
+
+// Circular-orbit approximation: fixed axial tilt and uniform daily rotation.
+function solarBasis(
+  timestamp: number,
+  longitude: number,
+  season = solarSeason(new Date(timestamp).getFullYear()),
+): SolarBasis {
+  const declination = seasonalDeclination(timestamp, season) * RADIANS;
+  const hourAngle = sunHourAngle(timestamp, longitude) * RADIANS;
   return {
     declination: declination / RADIANS,
     hourAngle,
@@ -79,10 +77,6 @@ function solarBasis(timestamp: number, longitude: number): SolarBasis {
     cosDeclination: Math.cos(declination),
     cosDeclinationHourAngle: Math.cos(declination) * Math.cos(hourAngle),
   };
-}
-
-export function sunHourAngle(timestamp: number, longitude = VIENNA_LONGITUDE): number {
-  return solarBasis(timestamp, longitude).hourAngle / RADIANS;
 }
 
 function elevation(
@@ -116,7 +110,8 @@ export function sampleSolarYear(
   longitude = VIENNA_LONGITUDE,
   extraMinutes = 0,
 ): SolarYear {
-  const { start, end } = yearBounds(year);
+  const season = solarSeason(year);
+  const { start, end } = season;
   const minutes = (end - start) / 60_000;
   const x = Array.from(
     { length: minutes + 2 * extraMinutes + 1 },
@@ -125,7 +120,14 @@ export function sampleSolarYear(
   return {
     longitude,
     x,
-    positions: x.map((position) => solarBasis(start + position * (end - start), longitude)),
+    positions: x.map((position) => {
+      const timestamp = start + position * (end - start);
+      return solarBasis(
+        timestamp,
+        longitude,
+        timestamp >= start && timestamp < end ? season : undefined,
+      );
+    }),
   };
 }
 
